@@ -4,7 +4,6 @@ import { Gender, ShiftType, UserRole, UserStatus, isStaffRole } from "@/types/us
 import { UserFormData, userSchema } from "@/utils/userValidation";
 import {
   ArrowLeftOutlined,
-  HospitalOutlined,
   InfoCircleOutlined,
   LockOutlined,
   PhoneOutlined,

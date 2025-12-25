@@ -1,20 +1,19 @@
-import React, { useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Form, Input, InputNumber, Switch, Button, message, Card, Divider, Skeleton, Alert } from 'antd';
-import { hospitalSchema, HospitalFormData } from '@/utils/validation';
 import { hospitalService } from '@/services/hospitalService';
-import { 
-  ArrowLeftOutlined, 
-  SaveOutlined,
+import { HospitalFormData, hospitalSchema } from '@/utils/validation';
+import {
+  ArrowLeftOutlined,
+  EditOutlined,
   EnvironmentOutlined,
-  PhoneOutlined,
-  MedicineBoxOutlined,
   InfoCircleOutlined,
-  EditOutlined
+  MedicineBoxOutlined,
+  SaveOutlined
 } from '@ant-design/icons';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Alert, Button, Card, Divider, Input, InputNumber, message, Skeleton, Switch } from 'antd';
+import React, { useEffect } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { useNavigate, useParams } from 'react-router-dom';
 
 const { TextArea } = Input;
 

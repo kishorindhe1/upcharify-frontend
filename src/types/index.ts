@@ -3,6 +3,11 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  phone: string;
+  avatar?: string;
+  firstName?: string;
+  lastName?: string;
+
   role: 'SUPER_ADMIN' | 'HOSPITAL_ADMIN' | 'DOCTOR' | 'NURSE' | 'STAFF';
   hospitalId?: string;
   createdAt: string;
@@ -30,11 +35,14 @@ export interface ResetPasswordData {
 export interface ForgotPasswordData {
   email: string;
 }
-
+interface Tokens {
+  accessToken: string;
+  refreshToken: string;
+}
 export interface AuthResponse {
   user: User;
-  token: string;
-  refreshToken: string;
+  tokens: Tokens;
+
 }
 
 // Hospital Types
