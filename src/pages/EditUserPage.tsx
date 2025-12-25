@@ -1,95 +1,177 @@
-import React, { useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Input, InputNumber, Select, Button, message, Card, Skeleton, Alert, Switch } from 'antd';
-import { userSchema, UserFormData } from '@/utils/userValidation';
-import { userService } from '@/services/userService';
-import { UserRole, UserStatus, Gender } from '@/types/userTypes';
-import { 
-  ArrowLeftOutlined, 
-  SaveOutlined,
-  PhoneOutlined,
-  EditOutlined,
+// src/pages/users/EditUserPage.tsx
+import { hospitalService, userService } from "@/services/userService";
+import { Gender, ShiftType, UserRole, UserStatus, isStaffRole } from "@/types/userTypes";
+import { UserFormData, userSchema } from "@/utils/userValidation";
+import {
+  ArrowLeftOutlined,
   InfoCircleOutlined,
-  LockOutlined
-} from '@ant-design/icons';
+  LockOutlined,
+  PhoneOutlined,
+  SaveOutlined,
+  UserOutlined
+} from "@ant-design/icons";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Alert,
+  Button,
+  Card,
+  DatePicker,
+  Input,
+  InputNumber,
+  Select,
+  Skeleton,
+  Switch,
+  message,
+} from "antd";
+import dayjs from "dayjs";
+import React, { useEffect, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { useNavigate, useParams } from "react-router-dom";
 
+const { TextArea } = Input;
 const { Option } = Select;
 
 const EditUserPage: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
-  
-  const { control, handleSubmit, formState: { errors }, watch, reset } = useForm<UserFormData>({
-    resolver: zodResolver(userSchema),
-  });
+  const [showHospitalAssignment, setShowHospitalAssignment] = useState(false);
 
   // Fetch user data
-  const { data: user, isLoading, error } = useQuery({
+  const { data: user, isLoading: userLoading, error: userError } = useQuery({
     queryKey: ['user', id],
     queryFn: () => userService.getUserById(id!),
     enabled: !!id,
   });
 
-  // Update form when data is loaded
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+    watch,
+    setValue,
+    reset,
+  } = useForm<UserFormData>({
+    resolver: zodResolver(userSchema),
+  });
+
+  // Populate form when user data is loaded
   useEffect(() => {
     if (user) {
+      // Get primary hospital role if exists
+      const primaryHospitalRole = user.hospitalRoles?.find((hr: any) => hr.isPrimary) || user.hospitalRoles?.[0];
+      
+      // Map hospitalRoles to hospitalAssignment format
+      const hospitalAssignment = primaryHospitalRole ? {
+        hospitalId: primaryHospitalRole.hospitalId,
+        departmentId: primaryHospitalRole.departmentId || undefined,
+        isPrimary: primaryHospitalRole.isPrimary,
+        specialization: primaryHospitalRole.specialization || undefined,
+        licenseNumber: primaryHospitalRole.licenseNumber || undefined,
+        qualification: primaryHospitalRole.qualification || undefined,
+        experienceYears: primaryHospitalRole.experienceYears || undefined,
+        consultationFee: primaryHospitalRole.consultationFee ? parseFloat(primaryHospitalRole.consultationFee) : undefined,
+        bio: primaryHospitalRole.bio || undefined,
+        nursingLicenseNumber: primaryHospitalRole.nursingLicenseNumber || undefined,
+        shift: primaryHospitalRole.shift || undefined,
+        pharmacistLicenseNumber: primaryHospitalRole.pharmacistLicenseNumber || undefined,
+        labCertifications: primaryHospitalRole.labCertifications || undefined,
+        employeeId: primaryHospitalRole.employeeId || undefined,
+      } : undefined;
+
       reset({
         firstName: user.firstName,
         lastName: user.lastName,
+        email: user.email || '',
         phone: user.phone,
-        email: user.email,
-        age: user.age,
+        dateOfBirth: user.dateOfBirth,
         gender: user.gender,
-        bloodGroup: user.bloodGroup as "A+" | "A-" | "B+" | "B-" | "AB+" | "AB-" | "O+" | "O-" | undefined,
-        avatar: user.avatar,
+        bloodGroup: user.bloodGroup || '',
+        avatar: user.avatar || '',
         role: user.role,
         status: user.status,
-        phoneVerified: user.phoneVerified,
-        emailVerified: user.emailVerified,
+        phoneVerified: user.phoneVerified || false,
+        emailVerified: user.emailVerified || false,
+        password: '', // Don't populate password
+        hospitalAssignment,
       });
+
+      // Set hospital assignment visibility based on role
+      setShowHospitalAssignment(isStaffRole(user.role));
     }
   }, [user, reset]);
+
+  // Fetch hospitals for dropdown
+  const { data: hospitals = [], isLoading: hospitalsLoading } = useQuery({
+    queryKey: ['hospitals'],
+    queryFn: hospitalService.getAllHospitals,
+  });
+
+  // Fetch departments when hospital is selected
+  const selectedHospitalId = watch('hospitalAssignment.hospitalId');
+  const { data: departments = [], isLoading: departmentsLoading } = useQuery({
+    queryKey: ['departments', selectedHospitalId],
+    queryFn: () => hospitalService.getDepartmentsByHospital(selectedHospitalId!),
+    enabled: !!selectedHospitalId,
+  });
 
   const updateMutation = useMutation({
     mutationFn: (data: UserFormData) => userService.updateUser(id!, data),
     onSuccess: () => {
       message.success({
-        content: 'User updated successfully!',
+        content: "User updated successfully!",
         duration: 3,
       });
-      queryClient.invalidateQueries({ queryKey: ['users'] });
       queryClient.invalidateQueries({ queryKey: ['user', id] });
-      navigate('/users');
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      navigate("/users");
     },
     onError: (error: any) => {
       message.error({
-        content: error.response?.data?.message || 'Failed to update user',
+        content: error.response?.data?.message || "Failed to update user",
         duration: 4,
       });
     },
   });
 
   const onSubmit = (data: UserFormData) => {
+    console.log('Submitting update data:', data);
     updateMutation.mutate(data);
   };
 
-  const selectedRole = watch('role');
+  const selectedRole = watch("role");
 
-  if (isLoading) {
+  // Show/hide hospital assignment based on role
+  useEffect(() => {
+    const shouldShow = isStaffRole(selectedRole);
+    setShowHospitalAssignment(shouldShow);
+    
+    if (!shouldShow) {
+      setValue('hospitalAssignment', undefined);
+    } else {
+      if (!watch('hospitalAssignment')) {
+        setValue('hospitalAssignment', {
+          hospitalId: '',
+          isPrimary: true,
+        });
+      }
+    }
+  }, [selectedRole, setValue, watch]);
+
+  // Loading state
+  if (userLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-pink-50 p-6">
         <div className="max-w-5xl mx-auto">
-          <Skeleton active paragraph={{ rows: 20 }} />
+          <Skeleton active paragraph={{ rows: 10 }} />
         </div>
       </div>
     );
   }
 
-  if (error || !user) {
+  // Error state
+  if (userError || !user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-pink-50 p-6">
         <div className="max-w-5xl mx-auto">
@@ -99,8 +181,8 @@ const EditUserPage: React.FC = () => {
             type="error"
             showIcon
             action={
-              <Button onClick={() => navigate('/users')}>
-                Back to List
+              <Button size="small" onClick={() => navigate('/users')}>
+                Back to Users
               </Button>
             }
           />
@@ -109,48 +191,81 @@ const EditUserPage: React.FC = () => {
     );
   }
 
-  const fullName = user.firstName && user.lastName 
-    ? `${user.firstName} ${user.lastName}`
-    : user.name || 'Unknown User';
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-pink-50 p-6">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <Button 
+          <Button
             icon={<ArrowLeftOutlined />}
-            onClick={() => navigate('/users')}
+            onClick={() => navigate("/users")}
             size="large"
             className="mb-4 hover:bg-white shadow-sm"
           >
             Back to Users
           </Button>
-          
-          <div className="bg-gradient-to-r from-violet-600 to-purple-600 rounded-2xl p-8 shadow-xl text-white">
+
+          <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl p-8 shadow-xl text-white">
             <div className="flex items-start space-x-4">
               <div className="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                <EditOutlined className="text-4xl text-white" />
+                <UserOutlined className="text-4xl text-white" />
               </div>
               <div>
                 <h1 className="text-4xl font-bold mb-2">Edit User</h1>
-                <p className="text-violet-100 text-lg">
-                  Update information for {fullName}
+                <p className="text-purple-100 text-lg">
+                  Update user information for {user.firstName} {user.lastName}
                 </p>
               </div>
             </div>
           </div>
         </div>
 
+        {/* User Metadata */}
+        {user && (
+          <Card className="shadow-lg rounded-2xl border-0 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <div className="text-xs text-slate-500 mb-1">User ID</div>
+                <div className="font-mono text-sm text-slate-700 truncate" title={user.id}>
+                  {user.id.substring(0, 8)}...
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-xs text-slate-500 mb-1">Created</div>
+                <div className="text-sm text-slate-700">
+                  {new Date(user.createdAt).toLocaleDateString()}
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-xs text-slate-500 mb-1">Last Login</div>
+                <div className="text-sm text-slate-700">
+                  {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleDateString() : 'Never'}
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-xs text-slate-500 mb-1">Account Status</div>
+                <div className="text-sm">
+                  {user.status === 'active' && <span className="text-green-600 font-semibold">✓ Active</span>}
+                  {user.status === 'inactive' && <span className="text-gray-600">○ Inactive</span>}
+                  {user.status === 'suspended' && <span className="text-red-600">🔒 Suspended</span>}
+                  {user.status === 'pending_verification' && <span className="text-orange-600">⏳ Pending</span>}
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
+
         <form onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-6">
             {/* Personal Information */}
-            <Card 
+            <Card
               className="shadow-lg rounded-2xl border-0"
               title={
                 <div className="flex items-center space-x-2 py-2">
                   <InfoCircleOutlined className="text-purple-600 text-xl" />
-                  <span className="text-xl font-bold text-slate-900">Personal Information</span>
+                  <span className="text-xl font-bold text-slate-900">
+                    Personal Information
+                  </span>
                 </div>
               }
             >
@@ -163,12 +278,12 @@ const EditUserPage: React.FC = () => {
                     name="firstName"
                     control={control}
                     render={({ field }) => (
-                      <Input 
-                        {...field} 
-                        size="large" 
+                      <Input
+                        {...field}
+                        size="large"
                         placeholder="John"
                         className="rounded-lg"
-                        status={errors.firstName ? 'error' : ''}
+                        status={errors.firstName ? "error" : ""}
                       />
                     )}
                   />
@@ -187,12 +302,12 @@ const EditUserPage: React.FC = () => {
                     name="lastName"
                     control={control}
                     render={({ field }) => (
-                      <Input 
-                        {...field} 
-                        size="large" 
+                      <Input
+                        {...field}
+                        size="large"
                         placeholder="Doe"
                         className="rounded-lg"
-                        status={errors.lastName ? 'error' : ''}
+                        status={errors.lastName ? "error" : ""}
                       />
                     )}
                   />
@@ -205,26 +320,27 @@ const EditUserPage: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Age
+                    Date of Birth <span className="text-red-500">*</span>
                   </label>
                   <Controller
-                    name="age"
+                    name="dateOfBirth"
                     control={control}
                     render={({ field }) => (
-                      <InputNumber 
-                        {...field} 
-                        size="large" 
-                        className="w-full rounded-lg" 
-                        min={1} 
-                        max={150}
-                        placeholder="25"
-                        status={errors.age ? 'error' : ''}
+                      <DatePicker
+                        {...field}
+                        value={field.value ? dayjs(field.value) : null}
+                        onChange={(date) => field.onChange(date ? date.format('YYYY-MM-DD') : '')}
+                        size="large"
+                        className="w-full rounded-lg"
+                        format="YYYY-MM-DD"
+                        placeholder="Select date of birth"
+                        status={errors.dateOfBirth ? "error" : ""}
                       />
                     )}
                   />
-                  {errors.age && (
+                  {errors.dateOfBirth && (
                     <p className="mt-2 text-sm text-red-500 flex items-center">
-                      <span className="mr-1">⚠</span> {errors.age.message}
+                      <span className="mr-1">⚠</span> {errors.dateOfBirth.message}
                     </p>
                   )}
                 </div>
@@ -237,12 +353,12 @@ const EditUserPage: React.FC = () => {
                     name="gender"
                     control={control}
                     render={({ field }) => (
-                      <Select 
-                        {...field} 
+                      <Select
+                        {...field}
                         size="large"
                         className="w-full"
                         placeholder="Select gender"
-                        status={errors.gender ? 'error' : ''}
+                        status={errors.gender ? "error" : ""}
                       >
                         <Option value={Gender.MALE}>👨 Male</Option>
                         <Option value={Gender.FEMALE}>👩 Female</Option>
@@ -265,16 +381,21 @@ const EditUserPage: React.FC = () => {
                     name="bloodGroup"
                     control={control}
                     render={({ field }) => (
-                      <Select 
-                        {...field} 
+                      <Select
+                        {...field}
                         size="large"
                         className="w-full"
                         placeholder="Select blood group"
-                        status={errors.bloodGroup ? 'error' : ''}
+                        status={errors.bloodGroup ? "error" : ""}
                       >
-                        {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => (
-                          <Option key={bg} value={bg}>{bg}</Option>
-                        ))}
+                        <Option value="A+">A+</Option>
+                        <Option value="A-">A-</Option>
+                        <Option value="B+">B+</Option>
+                        <Option value="B-">B-</Option>
+                        <Option value="AB+">AB+</Option>
+                        <Option value="AB-">AB-</Option>
+                        <Option value="O+">O+</Option>
+                        <Option value="O-">O-</Option>
                       </Select>
                     )}
                   />
@@ -293,26 +414,33 @@ const EditUserPage: React.FC = () => {
                     name="avatar"
                     control={control}
                     render={({ field }) => (
-                      <Input 
-                        {...field} 
-                        size="large" 
+                      <Input
+                        {...field}
+                        size="large"
                         placeholder="https://example.com/avatar.jpg"
                         className="rounded-lg"
-                        status={errors.avatar ? 'error' : ''}
+                        status={errors.avatar ? "error" : ""}
                       />
                     )}
                   />
+                  {errors.avatar && (
+                    <p className="mt-2 text-sm text-red-500 flex items-center">
+                      <span className="mr-1">⚠</span> {errors.avatar.message}
+                    </p>
+                  )}
                 </div>
               </div>
             </Card>
 
             {/* Contact Information */}
-            <Card 
+            <Card
               className="shadow-lg rounded-2xl border-0"
               title={
                 <div className="flex items-center space-x-2 py-2">
                   <PhoneOutlined className="text-green-600 text-xl" />
-                  <span className="text-xl font-bold text-slate-900">Contact Information</span>
+                  <span className="text-xl font-bold text-slate-900">
+                    Contact Information
+                  </span>
                 </div>
               }
             >
@@ -325,19 +453,20 @@ const EditUserPage: React.FC = () => {
                     name="phone"
                     control={control}
                     render={({ field }) => (
-                      <Input 
-                        {...field} 
-                        size="large" 
+                      <Input
+                        {...field}
+                        size="large"
                         placeholder="+919876543210"
                         className="rounded-lg"
-                        status={errors.phone ? 'error' : ''}
-                        disabled
+                        status={errors.phone ? "error" : ""}
                       />
                     )}
                   />
-                  <p className="mt-2 text-xs text-slate-500">
-                    Phone number cannot be changed
-                  </p>
+                  {errors.phone && (
+                    <p className="mt-2 text-sm text-red-500 flex items-center">
+                      <span className="mr-1">⚠</span> {errors.phone.message}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -348,13 +477,13 @@ const EditUserPage: React.FC = () => {
                     name="email"
                     control={control}
                     render={({ field }) => (
-                      <Input 
-                        {...field} 
-                        type="email" 
-                        size="large" 
+                      <Input
+                        {...field}
+                        type="email"
+                        size="large"
                         placeholder="john.doe@example.com"
                         className="rounded-lg"
-                        status={errors.email ? 'error' : ''}
+                        status={errors.email ? "error" : ""}
                       />
                     )}
                   />
@@ -368,16 +497,20 @@ const EditUserPage: React.FC = () => {
                 <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-5 border border-green-100">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="font-semibold text-slate-900 mb-1">✓ Phone Verified</div>
-                      <div className="text-xs text-slate-600">Mark phone as verified</div>
+                      <div className="font-semibold text-slate-900 mb-1 flex items-center">
+                        ✓ Phone Verified
+                      </div>
+                      <div className="text-xs text-slate-600">
+                        Mark phone as verified
+                      </div>
                     </div>
                     <Controller
                       name="phoneVerified"
                       control={control}
                       render={({ field }) => (
-                        <Switch 
-                          {...field} 
-                          checked={field.value} 
+                        <Switch
+                          {...field}
+                          checked={field.value}
                           size="default"
                         />
                       )}
@@ -388,16 +521,20 @@ const EditUserPage: React.FC = () => {
                 <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-5 border border-blue-100">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="font-semibold text-slate-900 mb-1">✓ Email Verified</div>
-                      <div className="text-xs text-slate-600">Mark email as verified</div>
+                      <div className="font-semibold text-slate-900 mb-1 flex items-center">
+                        ✓ Email Verified
+                      </div>
+                      <div className="text-xs text-slate-600">
+                        Mark email as verified
+                      </div>
                     </div>
                     <Controller
                       name="emailVerified"
                       control={control}
                       render={({ field }) => (
-                        <Switch 
-                          {...field} 
-                          checked={field.value} 
+                        <Switch
+                          {...field}
+                          checked={field.value}
                           size="default"
                         />
                       )}
@@ -408,12 +545,14 @@ const EditUserPage: React.FC = () => {
             </Card>
 
             {/* Account Settings */}
-            <Card 
+            <Card
               className="shadow-lg rounded-2xl border-0"
               title={
                 <div className="flex items-center space-x-2 py-2">
                   <LockOutlined className="text-orange-600 text-xl" />
-                  <span className="text-xl font-bold text-slate-900">Account Settings</span>
+                  <span className="text-xl font-bold text-slate-900">
+                    Account Settings
+                  </span>
                 </div>
               }
             >
@@ -426,30 +565,35 @@ const EditUserPage: React.FC = () => {
                     name="role"
                     control={control}
                     render={({ field }) => (
-                      <Select 
-                        {...field} 
+                      <Select
+                        {...field}
                         size="large"
                         className="w-full"
-                        status={errors.role ? 'error' : ''}
+                        placeholder="Select role"
+                        status={errors.role ? "error" : ""}
                       >
-                        
-<Option value={UserRole.HOSPITAL_ADMIN}>🏥 Hospital Admin</Option>
-      <Option value={UserRole.DOCTOR}>👨‍⚕️ Doctor</Option>
-      <Option value={UserRole.NURSE}>👩‍⚕️ Nurse</Option>
-      <Option value={UserRole.PHARMACIST}>💊 Pharmacist</Option>
-      <Option value={UserRole.LAB_TECHNICIAN}>🧪 Lab Technician</Option>
-      <Option value={UserRole.RADIOLOGIST}>📈 Radiologist</Option>
-      <Option value={UserRole.RECEPTIONIST}>🖥️ Receptionist / Front Desk</Option>
-      <Option value={UserRole.FRONT_DESK}>📋 Front Desk</Option>
-      <Option value={UserRole.BILLING_STAFF}>💳 Billing Staff</Option>
-      <Option value={UserRole.PATIENT}>👤 Patient</Option>
-      <Option value={UserRole.RECIPIENT}>🤲 Recipient</Option>
-      <Option value={UserRole.CAREGIVER}>🧑‍🤝‍🧑 Caregiver</Option>
-      <Option value={UserRole.IT_SUPPORT}>🛠️ IT Support</Option>
-      <Option value={UserRole.AUDITOR}>🔍 Auditor</Option>                        
+                        <Option value={UserRole.HOSPITAL_ADMIN}>🏥 Hospital Admin</Option>
+                        <Option value={UserRole.DOCTOR}>👨‍⚕️ Doctor</Option>
+                        <Option value={UserRole.NURSE}>👩‍⚕️ Nurse</Option>
+                        <Option value={UserRole.PHARMACIST}>💊 Pharmacist</Option>
+                        <Option value={UserRole.LAB_TECHNICIAN}>🧪 Lab Technician</Option>
+                        <Option value={UserRole.RADIOLOGIST}>📈 Radiologist</Option>
+                        <Option value={UserRole.RECEPTIONIST}>🖥️ Receptionist</Option>
+                        <Option value={UserRole.FRONT_DESK}>📋 Front Desk</Option>
+                        <Option value={UserRole.BILLING_STAFF}>💳 Billing Staff</Option>
+                        <Option value={UserRole.PATIENT}>👤 Patient</Option>
+                        <Option value={UserRole.RECIPIENT}>🤲 Recipient</Option>
+                        <Option value={UserRole.CAREGIVER}>🧑‍🤝‍🧑 Caregiver</Option>
+                        <Option value={UserRole.IT_SUPPORT}>🛠️ IT Support</Option>
+                        <Option value={UserRole.AUDITOR}>🔍 Auditor</Option>
                       </Select>
                     )}
                   />
+                  {errors.role && (
+                    <p className="mt-2 text-sm text-red-500 flex items-center">
+                      <span className="mr-1">⚠</span> {errors.role.message}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -460,54 +604,531 @@ const EditUserPage: React.FC = () => {
                     name="status"
                     control={control}
                     render={({ field }) => (
-                      <Select 
-                        {...field} 
+                      <Select
+                        {...field}
                         size="large"
                         className="w-full"
-                        status={errors.status ? 'error' : ''}
+                        placeholder="Select status"
+                        status={errors.status ? "error" : ""}
                       >
                         <Option value={UserStatus.ACTIVE}>✓ Active</Option>
                         <Option value={UserStatus.INACTIVE}>○ Inactive</Option>
                         <Option value={UserStatus.SUSPENDED}>🔒 Suspended</Option>
-                        <Option value={UserStatus.PENDING_VERIFICATION}>⏳ Pending</Option>
+                        <Option value={UserStatus.PENDING_VERIFICATION}>⏳ Pending Verification</Option>
                       </Select>
                     )}
                   />
+                  {errors.status && (
+                    <p className="mt-2 text-sm text-red-500 flex items-center">
+                      <span className="mr-1">⚠</span> {errors.status.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    New Password{" "}
+                    <span className="text-slate-400 text-xs">
+                      (Leave empty to keep current password)
+                    </span>
+                  </label>
+                  <Controller
+                    name="password"
+                    control={control}
+                    render={({ field }) => (
+                      <Input.Password
+                        {...field}
+                        size="large"
+                        placeholder="Enter new password (optional)"
+                        className="rounded-lg"
+                        status={errors.password ? "error" : ""}
+                      />
+                    )}
+                  />
+                  {errors.password && (
+                    <p className="mt-2 text-sm text-red-500 flex items-center">
+                      <span className="mr-1">⚠</span> {errors.password.message}
+                    </p>
+                  )}
+                  <p className="mt-2 text-xs text-slate-500">
+                    Only enter a new password if you want to change it
+                  </p>
                 </div>
 
                 {selectedRole && (
                   <div className="md:col-span-2 bg-purple-50 border border-purple-200 rounded-xl p-4">
-                    <h4 className="font-semibold text-purple-900 mb-2">Role Permissions</h4>
+                    <h4 className="font-semibold text-purple-900 mb-2">
+                      Role Permissions
+                    </h4>
                     <div className="text-sm text-purple-700">
-                      {selectedRole === UserRole.HOSPITAL_ADMIN && '🏥 Hospital management access'}
-                      {selectedRole === UserRole.DOCTOR && '⚕️ Medical access'}
-                      {selectedRole === UserRole.PATIENT && '🤒 Patient access'}
-                      {selectedRole === UserRole.RECIPIENT && '💉 Recipient access'}
-
+                      {selectedRole === UserRole.HOSPITAL_ADMIN &&
+                        "🏥 Hospital management - can manage hospital data, doctors, and appointments"}
+                      {selectedRole === UserRole.DOCTOR &&
+                        "⚕️ Medical access - can view patients, manage appointments, and update medical records"}
+                      {selectedRole === UserRole.PATIENT &&
+                        "🤒 Patient access - can view own medical records and book appointments"}
+                      {isStaffRole(selectedRole) && selectedRole !== UserRole.DOCTOR &&
+                        `👨‍💼 Staff access - can perform duties related to ${selectedRole} role`}
                     </div>
                   </div>
                 )}
               </div>
             </Card>
 
+            {/* Hospital Assignment - Only for Staff Roles */}
+            {showHospitalAssignment && (
+              <Card
+                className="shadow-lg rounded-2xl border-0 border-2 border-orange-200"
+                title={
+                  <div className="flex items-center space-x-2 py-2">
+                    <span className="text-xl font-bold text-slate-900">
+                      Hospital Assignment
+                    </span>
+                    <span className="ml-2 px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-full font-semibold">
+                      Required for Staff
+                    </span>
+                  </div>
+                }
+              >
+                {user?.hospitalRoles?.[0]?.hospital && (
+                  <Alert
+                    message={`Current Hospital: ${user.hospitalRoles[0].hospital.name}`}
+                    description={`${user.hospitalRoles[0].hospital.city}, ${user.hospitalRoles[0].hospital.state}`}
+                    type="success"
+                    showIcon
+                    className="mb-6"
+                  />
+                )}
+                
+                <Alert
+                  message="Hospital assignment is required for all staff roles"
+                  description="Please select a hospital and provide role-specific information."
+                  type="info"
+                  showIcon
+                  className="mb-6"
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Hospital Selection */}
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      Hospital <span className="text-red-500">*</span>
+                    </label>
+                    <Controller
+                      name="hospitalAssignment.hospitalId"
+                      control={control}
+                      render={({ field }) => (
+                        <Select
+                          {...field}
+                          size="large"
+                          className="w-full"
+                          placeholder="Select hospital"
+                          loading={hospitalsLoading}
+                          showSearch
+                          filterOption={(input, option) =>
+                            (option?.children as string)?.toLowerCase().includes(input.toLowerCase())
+                          }
+                          status={errors.hospitalAssignment?.hospitalId ? "error" : ""}
+                        >
+                          {hospitals.map((hospital: any) => (
+                            <Option key={hospital.id} value={hospital.id}>
+                              🏥 {hospital.name} - {hospital.city}
+                            </Option>
+                          ))}
+                        </Select>
+                      )}
+                    />
+                    {errors.hospitalAssignment?.hospitalId && (
+                      <p className="mt-2 text-sm text-red-500 flex items-center">
+                        <span className="mr-1">⚠</span> {errors.hospitalAssignment.hospitalId.message}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Department Selection */}
+                  {selectedHospitalId && (
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        Department
+                      </label>
+                      <Controller
+                        name="hospitalAssignment.departmentId"
+                        control={control}
+                        render={({ field }) => (
+                          <Select
+                            {...field}
+                            size="large"
+                            className="w-full"
+                            placeholder="Select department (optional)"
+                            loading={departmentsLoading}
+                            allowClear
+                            showSearch
+                            filterOption={(input, option) =>
+                              (option?.children as string)?.toLowerCase().includes(input.toLowerCase())
+                            }
+                          >
+                            {departments.map((dept: any) => (
+                              <Option key={dept.id} value={dept.id}>
+                                {dept.name}
+                              </Option>
+                            ))}
+                          </Select>
+                        )}
+                      />
+                    </div>
+                  )}
+
+                  {/* Doctor-Specific Fields */}
+                  {selectedRole === UserRole.DOCTOR && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                          Specialization <span className="text-red-500">*</span>
+                        </label>
+                        <Controller
+                          name="hospitalAssignment.specialization"
+                          control={control}
+                          render={({ field }) => (
+                            <Input
+                              {...field}
+                              size="large"
+                              placeholder="e.g., Cardiology"
+                              className="rounded-lg"
+                              status={errors.hospitalAssignment?.specialization ? "error" : ""}
+                            />
+                          )}
+                        />
+                        {errors.hospitalAssignment?.specialization && (
+                          <p className="mt-2 text-sm text-red-500 flex items-center">
+                            <span className="mr-1">⚠</span> {errors.hospitalAssignment.specialization.message}
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                          License Number <span className="text-red-500">*</span>
+                        </label>
+                        <Controller
+                          name="hospitalAssignment.licenseNumber"
+                          control={control}
+                          render={({ field }) => (
+                            <Input
+                              {...field}
+                              size="large"
+                              placeholder="e.g., MED12345"
+                              className="rounded-lg"
+                              status={errors.hospitalAssignment?.licenseNumber ? "error" : ""}
+                            />
+                          )}
+                        />
+                        {errors.hospitalAssignment?.licenseNumber && (
+                          <p className="mt-2 text-sm text-red-500 flex items-center">
+                            <span className="mr-1">⚠</span> {errors.hospitalAssignment.licenseNumber.message}
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                          Qualification
+                        </label>
+                        <Controller
+                          name="hospitalAssignment.qualification"
+                          control={control}
+                          render={({ field }) => (
+                            <Input
+                              {...field}
+                              size="large"
+                              placeholder="e.g., MBBS, MD"
+                              className="rounded-lg"
+                            />
+                          )}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                          Experience (Years)
+                        </label>
+                        <Controller
+                          name="hospitalAssignment.experienceYears"
+                          control={control}
+                          render={({ field }) => (
+                            <InputNumber
+                              {...field}
+                              size="large"
+                              className="w-full rounded-lg"
+                              min={0}
+                              max={70}
+                              placeholder="10"
+                            />
+                          )}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                          Consultation Fee (₹)
+                        </label>
+                        <Controller
+                          name="hospitalAssignment.consultationFee"
+                          control={control}
+                          render={({ field }) => (
+                            <InputNumber
+                              {...field}
+                              size="large"
+                              className="w-full rounded-lg"
+                              min={0}
+                              placeholder="500"
+                              formatter={value => `₹ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                              parser={value => value!.replace(/₹\s?|(,*)/g, '')}
+                            />
+                          )}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                          Employee ID
+                        </label>
+                        <Controller
+                          name="hospitalAssignment.employeeId"
+                          control={control}
+                          render={({ field }) => (
+                            <Input
+                              {...field}
+                              size="large"
+                              placeholder="EMP-001"
+                              className="rounded-lg"
+                            />
+                          )}
+                        />
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                          Bio
+                        </label>
+                        <Controller
+                          name="hospitalAssignment.bio"
+                          control={control}
+                          render={({ field }) => (
+                            <TextArea
+                              {...field}
+                              rows={3}
+                              placeholder="Brief professional bio..."
+                              className="rounded-lg"
+                            />
+                          )}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {/* Nurse-Specific Fields */}
+                  {selectedRole === UserRole.NURSE && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                          Nursing License Number <span className="text-red-500">*</span>
+                        </label>
+                        <Controller
+                          name="hospitalAssignment.nursingLicenseNumber"
+                          control={control}
+                          render={({ field }) => (
+                            <Input
+                              {...field}
+                              size="large"
+                              placeholder="e.g., RN-12345"
+                              className="rounded-lg"
+                              status={errors.hospitalAssignment?.nursingLicenseNumber ? "error" : ""}
+                            />
+                          )}
+                        />
+                        {errors.hospitalAssignment?.nursingLicenseNumber && (
+                          <p className="mt-2 text-sm text-red-500 flex items-center">
+                            <span className="mr-1">⚠</span> {errors.hospitalAssignment.nursingLicenseNumber.message}
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                          Shift
+                        </label>
+                        <Controller
+                          name="hospitalAssignment.shift"
+                          control={control}
+                          render={({ field }) => (
+                            <Select
+                              {...field}
+                              size="large"
+                              className="w-full"
+                              placeholder="Select shift"
+                            >
+                              <Option value={ShiftType.MORNING}>🌅 Morning</Option>
+                              <Option value={ShiftType.EVENING}>🌆 Evening</Option>
+                              <Option value={ShiftType.NIGHT}>🌙 Night</Option>
+                              <Option value={ShiftType.ROTATING}>🔄 Rotating</Option>
+                            </Select>
+                          )}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                          Employee ID
+                        </label>
+                        <Controller
+                          name="hospitalAssignment.employeeId"
+                          control={control}
+                          render={({ field }) => (
+                            <Input
+                              {...field}
+                              size="large"
+                              placeholder="EMP-002"
+                              className="rounded-lg"
+                            />
+                          )}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {/* Pharmacist-Specific Fields */}
+                  {selectedRole === UserRole.PHARMACIST && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                          Pharmacist License Number <span className="text-red-500">*</span>
+                        </label>
+                        <Controller
+                          name="hospitalAssignment.pharmacistLicenseNumber"
+                          control={control}
+                          render={({ field }) => (
+                            <Input
+                              {...field}
+                              size="large"
+                              placeholder="e.g., PH-12345"
+                              className="rounded-lg"
+                              status={errors.hospitalAssignment?.pharmacistLicenseNumber ? "error" : ""}
+                            />
+                          )}
+                        />
+                        {errors.hospitalAssignment?.pharmacistLicenseNumber && (
+                          <p className="mt-2 text-sm text-red-500 flex items-center">
+                            <span className="mr-1">⚠</span> {errors.hospitalAssignment.pharmacistLicenseNumber.message}
+                          </p>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                          Employee ID
+                        </label>
+                        <Controller
+                          name="hospitalAssignment.employeeId"
+                          control={control}
+                          render={({ field }) => (
+                            <Input
+                              {...field}
+                              size="large"
+                              placeholder="EMP-003"
+                              className="rounded-lg"
+                            />
+                          )}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {/* Lab Technician-Specific Fields */}
+                  {selectedRole === UserRole.LAB_TECHNICIAN && (
+                    <>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                          Lab Certifications
+                        </label>
+                        <Controller
+                          name="hospitalAssignment.labCertifications"
+                          control={control}
+                          render={({ field }) => (
+                            <TextArea
+                              {...field}
+                              rows={2}
+                              placeholder="List certifications..."
+                              className="rounded-lg"
+                            />
+                          )}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                          Employee ID
+                        </label>
+                        <Controller
+                          name="hospitalAssignment.employeeId"
+                          control={control}
+                          render={({ field }) => (
+                            <Input
+                              {...field}
+                              size="large"
+                              placeholder="EMP-004"
+                              className="rounded-lg"
+                            />
+                          )}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {/* Other Staff Roles */}
+                  {(selectedRole === UserRole.RECEPTIONIST || 
+                    selectedRole === UserRole.FRONT_DESK ||
+                    selectedRole === UserRole.BILLING_STAFF ||
+                    selectedRole === UserRole.RADIOLOGIST) && (
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        Employee ID
+                      </label>
+                      <Controller
+                        name="hospitalAssignment.employeeId"
+                        control={control}
+                        render={({ field }) => (
+                          <Input
+                            {...field}
+                            size="large"
+                            placeholder="EMP-XXX"
+                            className="rounded-lg"
+                          />
+                        )}
+                      />
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
+
             {/* Submit Buttons */}
             <div className="flex justify-end space-x-4 pt-4">
-              <Button 
-                size="large" 
-                onClick={() => navigate('/users')}
+              <Button
+                size="large"
+                onClick={() => navigate("/users")}
                 className="px-8 h-12 rounded-lg"
               >
                 Cancel
               </Button>
-              <Button 
-                type="primary" 
+              <Button
+                type="primary"
                 size="large"
                 htmlType="submit"
                 loading={updateMutation.isPending}
                 icon={<SaveOutlined />}
-                className="px-8 h-12 rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 border-0 shadow-lg hover:shadow-xl"
+                className="px-8 h-12 rounded-lg bg-gradient-to-r from-purple-600 to-pink-600 border-0 shadow-lg hover:shadow-xl"
               >
-                {updateMutation.isPending ? 'Updating...' : 'Update User'}
+                {updateMutation.isPending ? "Updating..." : "Update User"}
               </Button>
             </div>
           </div>
