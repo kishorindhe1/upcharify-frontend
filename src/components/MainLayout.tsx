@@ -10,6 +10,7 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   SettingOutlined,
+  CalendarOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/store/authStore';
 
@@ -72,6 +73,10 @@ const MainLayout: React.FC = () => {
     {      key: '/doctors',
       icon: <UserOutlined />,
       label: <Link to="/doctors">Doctors</Link>,
+    },
+    {      key: '/appointments',
+      icon: <CalendarOutlined />,
+      label: <Link to="/appointments">Appointments</Link>,
     },
   ];
 
