@@ -70,9 +70,11 @@ export const HospitalCreate: React.FC = () => {
   const onSubmit = async (data: CreateHospitalFormData) => {
     try {
       setLoading(true);
+      // Ensure the type is cast to HospitalType
       const payload = {
         ...data,
         facilities: selectedFacilities,
+        type: data.type as any, // Replace 'any' with 'HospitalType' if imported
       };
       await hospitalsAPI.create(payload);
       message.success('Hospital created successfully');
