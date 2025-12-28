@@ -1,25 +1,34 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ConfigProvider } from 'antd';
-import ProtectedRoute from './components/ProtectedRoute';
-import MainLayout from './components/MainLayout';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ConfigProvider } from "antd";
+import React from "react";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import MainLayout from "./components/MainLayout";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 // Pages
-import LoginPage from './pages/LoginPage';
-import ForgotPasswordPage from './pages/ForgotPasswordPage';
-import ResetPasswordPage from './pages/ResetPasswordPage';
-import DashboardPage from './pages/DashboardPage';
-import HospitalListPage from './pages/HospitalListPage';
-import AddHospitalPage from './pages/AddHospitalPage';
-import TermsPage from './pages/TermsPage';
-import PrivacyPage from './pages/PrivacyPage';
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import LoginPage from "./pages/LoginPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+import TermsPage from "./pages/TermsPage";
 
-import './styles/index.css';
-import EditHospitalPage from './pages/EditHospitalPage';
-import AddUserPage from './pages/AddUserPage';
-import EditUserPage from './pages/EditUserPage';
-import UserListPage from './pages/UserListPage';
+import EditUserPage from "./pages/EditUserPage";
+import { SuperAdminDashboard } from "./pages/dashboard/SuperAdminDashboard";
+import { HospitalCreate } from "./pages/hospitals/CreateHospital";
+import { HospitalEdit } from "./pages/hospitals/EditHospital";
+import { HospitalList } from "./pages/hospitals/HospitalList";
+
+import { DoctorCreate } from "./pages/doctor/CreateDoctor";
+import { DoctorList } from "./pages/doctor/DoctorList";
+import { DoctorEdit } from "./pages/doctor/EditDoctor";
+import { UserCreate } from "./pages/users/CreateUser";
+import { UserList } from "./pages/users/UserList";
+import "./styles/index.css";
+import { AppointmentList } from "./pages/appointments/AppointmentList";
+import { AppointmentCreate } from "./pages/appointments/AppointmentCreate";
+import { AppointmentCalendar } from "./pages/appointments/AppointmentCalendar";
+import { AppointmentDetails } from "./pages/appointments/AppointmentDetails";
+import { AppointmentEdit } from "./pages/appointments/AppointmentEdit";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -35,11 +44,11 @@ const queryClient = new QueryClient({
 // Ant Design theme configuration
 const theme = {
   token: {
-    colorPrimary: '#14b8a6',
-    colorSuccess: '#10b981',
-    colorWarning: '#f59e0b',
-    colorError: '#ef4444',
-    colorInfo: '#3b82f6',
+    colorPrimary: "#14b8a6",
+    colorSuccess: "#10b981",
+    colorWarning: "#f59e0b",
+    colorError: "#ef4444",
+    colorInfo: "#3b82f6",
     borderRadius: 12,
     fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
   },
@@ -82,14 +91,35 @@ const App: React.FC = () => {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<Navigate to="/dashboard" replace />} />
-              <Route path="dashboard" element={<DashboardPage />} />
-              <Route path="hospitals" element={<HospitalListPage />} />
-              <Route path="hospitals/add" element={<AddHospitalPage />} />
-              <Route path="hospitals/edit/:id" element={<EditHospitalPage />} />
-              <Route path="users" element={<UserListPage />} />
-              <Route path="users/add" element={<AddUserPage />} />
+              <Route
+                index
+                element={<Navigate to="/super-admin-dashboard" replace />}
+              />
+              <Route
+                path="super-admin-dashboard"
+                element={<SuperAdminDashboard />}
+              />
+              <Route path="hospitals" element={<HospitalList />} />
+              <Route path="hospitals/add" element={<HospitalCreate />} />
+              <Route path="hospitals/:id/edit" element={<HospitalEdit />} />
+              <Route path="doctors" element={<DoctorList />} />
+              <Route path="doctors/create" element={<DoctorCreate />} />
+              <Route path="doctors/:id/edit" element={<DoctorEdit />} />
+              <Route path="users" element={<UserList />} />
+              <Route path="users/create" element={<UserCreate />} />
               <Route path="users/edit/:id" element={<EditUserPage />} />
+
+              <Route path="appointments">
+                <Route index element={<AppointmentList />} />
+                <Route path="create" element={<AppointmentCreate />} />
+                <Route path="calendar" element={<AppointmentCalendar />} />
+                <Route path=":id" element={<AppointmentDetails />} />
+                <Route path=":id/edit" element={<AppointmentEdit />} />
+              </Route>
+              <Route
+                path="*"
+                element={<Navigate to="/super-admin-dashboard" replace />}
+              />
             </Route>
 
             {/* Catch all - redirect to dashboard */}

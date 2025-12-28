@@ -1,89 +1,97 @@
-import { apiService } from './api';
-import { 
-  Hospital, 
-  CreateHospitalData, 
-  UpdateHospitalData,
-  HospitalQueryParams,
-  HospitalStatistics,
-  ApiResponse,
-  PaginatedResponse
-} from '@/types';
+// src/api/endpoints/hospitals.ts
+import apiClient from './api';
+import type {
+  Hospital,
+  CreateHospitalRequest,
+  UpdateHospitalRequest,
+  HospitalListQuery,
+  HospitalListResponse,
+} from '@/types/hospital.types';
 
-export const hospitalService = {
-  // Get all hospitals with pagination and filters
-  getAllHospitals: async (params?: HospitalQueryParams): Promise<PaginatedResponse<Hospital>> => {
-    const response = await apiService.get<ApiResponse<PaginatedResponse<Hospital>>>(
-      'admin/hospital/list',
-      { params }
-    );
-    return response.data.data;
+interface UpdateStatusRequest {
+  status: string;
+  reason?: string;
+}
+
+interface RejectHospitalRequest {
+  reason: string;
+  notifyAdmin?: boolean;
+}
+
+interface ApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+}
+
+export const hospitalsAPI = {
+  // List all hospitals
+  list: async (query: HospitalListQuery): Promise<ApiResponse<HospitalListResponse>> => {
+    const params = new URLSearchParams();
+    
+    if (query.page) params.append('page', query.page.toString());
+    if (query.limit) params.append('limit', query.limit.toString());
+    if (query.search) params.append('search', query.search);
+    if (query.city) params.append('city', query.city);
+    if (query.state) params.append('state', query.state);
+    if (query.type) params.append('type', query.type);
+    if (query.status) params.append('status', query.status);
+    if (query.verified !== undefined) params.append('verified', query.verified.toString());
+    if (query.sortBy) params.append('sortBy', query.sortBy);
+    if (query.sortOrder) params.append('sortOrder', query.sortOrder);
+     const response = await apiClient.get(`/super-admin/hospitals?${params.toString()}`);
+     return response.data;
+    //
+  },
+
+  // Get pending hospitals
+  getPending: async (): Promise<ApiResponse<Hospital[]>> => {
+    return apiClient.get('/super-admin/hospitals/pending');
   },
 
   // Get hospital by ID
-  getHospitalById: async (id: string): Promise<Hospital> => {
-    const response = await apiService.get<ApiResponse<Hospital>>(
-      `/admin/hospital/${id}`
-    );
-    return response.data.data;
+  getById: async (id: string): Promise<ApiResponse<Hospital>> => {
+    const response = await apiClient.get(`/super-admin/hospitals/${id}`);
+    return response.data;
   },
 
-  // Get nearby hospitals
-  getNearbyHospitals: async (latitude: number, longitude: number, radius: number = 10): Promise<Hospital[]> => {
-    const response = await apiService.get<ApiResponse<Hospital[]>>(
-      '/admin/hospital/nearby',
-      { 
-        params: { latitude, longitude, radius } 
-      }
-    );
-    return response.data.data;
-  },
-
-  // Get hospital statistics
-  getHospitalStatistics: async (id: string): Promise<HospitalStatistics> => {
-    const response = await apiService.get<ApiResponse<HospitalStatistics>>(
-      `/admin/hospital/${id}/statistics`
-    );
-    return response.data.data;
-  },
-
-  // Create hospital (Super Admin only)
-  createHospital: async (data: CreateHospitalData): Promise<Hospital> => {
-    const response = await apiService.post<ApiResponse<Hospital>>(
-      '/admin/hospital/add',
-      data
-    );
-    return response.data.data;
+  // Create hospital
+  create: async (data: CreateHospitalRequest): Promise<ApiResponse<Hospital>> => {
+    return apiClient.post('/super-admin/hospitals', data);
   },
 
   // Update hospital
-  updateHospital: async (id: string, data: UpdateHospitalData): Promise<Hospital> => {
-    const response = await apiService.put<ApiResponse<Hospital>>(
-      `/admin/hospital/${id}`,
-      data
-    );
-    return response.data.data;
+  update: async (id: string, data: UpdateHospitalRequest): Promise<ApiResponse<Hospital>> => {
+    return apiClient.put(`/super-admin/hospitals/${id}`, data);
+  },
+
+  // Verify hospital
+  verify: async (id: string): Promise<ApiResponse<Hospital>> => {
+    return apiClient.post(`/super-admin/hospitals/${id}/verify`);
+  },
+
+  // Reject hospital
+  reject: async (id: string, data: RejectHospitalRequest): Promise<ApiResponse<Hospital>> => {
+    return apiClient.post(`/super-admin/hospitals/${id}/reject`, data);
   },
 
   // Update hospital status
-  updateHospitalStatus: async (id: string, status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED'): Promise<Hospital> => {
-    const response = await apiService.patch<ApiResponse<Hospital>>(
-      `/admin/hospital/${id}/status`,
-      { status }
-    );
-    return response.data.data;
-  },
-
-  // Update bed availability
-  updateBedAvailability: async (id: string, availableBeds: number): Promise<Hospital> => {
-    const response = await apiService.patch<ApiResponse<Hospital>>(
-      `/admin/hospital/${id}/beds`,
-      { availableBeds }
-    );
-    return response.data.data;
+  updateStatus: async (id: string, data: UpdateStatusRequest): Promise<ApiResponse<Hospital>> => {
+    return apiClient.put(`/super-admin/hospitals/${id}/status`, data);
   },
 
   // Delete hospital
-  deleteHospital: async (id: string): Promise<void> => {
-    await apiService.delete(`/admin/hospital/${id}`);
+  delete: async (id: string): Promise<ApiResponse<null>> => {
+    return apiClient.delete(`/super-admin/hospitals/${id}`);
+  },
+
+  // Get hospital doctors
+  getDoctors: async (id: string): Promise<ApiResponse<any[]>> => {
+    return apiClient.get(`/super-admin/hospitals/${id}/doctors`);
+  },
+
+  // Get hospital statistics
+  getStats: async (id: string): Promise<ApiResponse<any>> => {
+    return apiClient.get(`/super-admin/hospitals/${id}/stats`);
   },
 };

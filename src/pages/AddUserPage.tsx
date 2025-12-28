@@ -754,7 +754,7 @@ const AddUserPage: React.FC = () => {
                               min={0}
                               placeholder="500"
                               formatter={value => `₹ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                              parser={value => value!.replace(/₹\s?|(,*)/g, '')}
+                              parser={value => Number(value!.replace(/₹\s?|(,*)/g, ''))}
                             />
                           )}
                         />

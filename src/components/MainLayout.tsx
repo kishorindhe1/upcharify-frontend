@@ -69,6 +69,10 @@ const MainLayout: React.FC = () => {
       icon: <UserOutlined />,
       label: <Link to="/users">Users</Link>,
     },
+    {      key: '/doctors',
+      icon: <UserOutlined />,
+      label: <Link to="/doctors">Doctors</Link>,
+    },
   ];
 
   return (
