@@ -55,10 +55,10 @@ export const HospitalList: React.FC = () => {
     queryKey: ['hospitals', filters],
     queryFn: () => hospitalsAPI.list(filters as any),
   });
-  console.log('Hospital list data:', data?.data.hospitals);
+  console.log('Hospital list data:', data?.hospitals);
 
-  const hospitals = data?.data?.hospitals || [];
-  const pagination = data?.data.pagination;
+  const hospitals = data?.hospitals || [];
+  const pagination = data?.pagination;
 
   const handleDelete = (id: string, name: string) => {
     confirm({
@@ -281,7 +281,7 @@ export const HospitalList: React.FC = () => {
       align: 'center',
       render: (rating: number, record: Hospital) => (
         <div>
-          <div className="font-medium text-gray-900">{rating?.toFixed(1) || 1}</div>
+          <div className="font-medium text-gray-900">{rating || 1}</div>
           <div className="text-xs text-gray-500">{record.totalReviews} reviews</div>
         </div>
       ),
@@ -299,6 +299,7 @@ export const HospitalList: React.FC = () => {
       ),
     },
   ];
+  console.log('data',data)
 
   return (
     <div className="space-y-6">

@@ -1,5 +1,6 @@
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { useAuthStore } from '@/store/authStore';
+import { ApiResponse } from '@/types';
 
 // Base API configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
@@ -30,10 +31,19 @@ apiClient.interceptors.request.use(
 
 // Response interceptor
 apiClient.interceptors.response.use(
-  (response: AxiosResponse) => response,
+  (response: AxiosResponse) => {
+    const res = response.data as ApiResponse<unknown>;
+
+    // Auto-unwrap { success, data }
+    if (res && typeof res === 'object' && 'data' in res) {
+      return res.data;
+    }
+
+    // For APIs that don't follow wrapper
+    return response.data;
+  },
   (error: AxiosError) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid
       // useAuthStore.getState().logout();
       // window.location.href = '/login';
     }

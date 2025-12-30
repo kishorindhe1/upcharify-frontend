@@ -73,8 +73,8 @@ export const UserList: React.FC = () => {
     queryFn: () => usersAPI.getStats(),
   });
 
-  const users = data?.data?.users || [];
-  const pagination = data?.data?.pagination;
+  const users = data?.users || [];
+  const pagination = data?.pagination;
   const stats = statsData?.data;
 
   const handleDelete = (user: User) => {

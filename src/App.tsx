@@ -29,6 +29,10 @@ import { AppointmentCreate } from "./pages/appointments/AppointmentCreate";
 import { AppointmentCalendar } from "./pages/appointments/AppointmentCalendar";
 import { AppointmentDetails } from "./pages/appointments/AppointmentDetails";
 import { AppointmentEdit } from "./pages/appointments/AppointmentEdit";
+import { DoctorDetails } from "./pages/doctor/DoctorDetails";
+import { UserDetails } from "./pages/users/UserDetails";
+import { UserEdit } from "./pages/users/EditUser";
+import { HospitalDetails } from "./pages/hospitals/HospitalDetails";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -99,15 +103,30 @@ const App: React.FC = () => {
                 path="super-admin-dashboard"
                 element={<SuperAdminDashboard />}
               />
-              <Route path="hospitals" element={<HospitalList />} />
-              <Route path="hospitals/add" element={<HospitalCreate />} />
-              <Route path="hospitals/:id/edit" element={<HospitalEdit />} />
-              <Route path="doctors" element={<DoctorList />} />
-              <Route path="doctors/create" element={<DoctorCreate />} />
-              <Route path="doctors/:id/edit" element={<DoctorEdit />} />
-              <Route path="users" element={<UserList />} />
-              <Route path="users/create" element={<UserCreate />} />
-              <Route path="users/edit/:id" element={<EditUserPage />} />
+              {/* Hospital Routes */}
+        <Route path="hospitals">
+          <Route index element={<HospitalList />} />
+          <Route path="create" element={<HospitalCreate />} />
+          <Route path=":id" element={<HospitalDetails />} />
+          <Route path=":id/edit" element={<HospitalEdit />} />
+        </Route>
+
+        {/* User Routes */}
+        <Route path="users">
+          <Route index element={<UserList />} />
+          <Route path="create" element={<UserCreate />} />
+          <Route path=":id" element={<UserDetails />} />
+          <Route path=":id/edit" element={<UserEdit />} />
+        </Route>
+                {/* Doctor Routes */}
+        <Route path="doctors">
+          <Route index element={<DoctorList />} />
+          <Route path="create" element={<DoctorCreate />} />
+          <Route path=":id" element={<DoctorDetails />} />
+          <Route path=":id/edit" element={<DoctorEdit />} />
+        </Route>
+
+         
 
               <Route path="appointments">
                 <Route index element={<AppointmentList />} />

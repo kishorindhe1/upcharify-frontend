@@ -1,4 +1,3 @@
-// src/api/endpoints/hospitals.ts
 import apiClient from './api';
 import type {
   Hospital,
@@ -18,17 +17,11 @@ interface RejectHospitalRequest {
   notifyAdmin?: boolean;
 }
 
-interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data: T;
-}
-
 export const hospitalsAPI = {
   // List all hospitals
-  list: async (query: HospitalListQuery): Promise<ApiResponse<HospitalListResponse>> => {
+  list: async (query: HospitalListQuery): Promise<HospitalListResponse> => {
     const params = new URLSearchParams();
-    
+
     if (query.page) params.append('page', query.page.toString());
     if (query.limit) params.append('limit', query.limit.toString());
     if (query.search) params.append('search', query.search);
@@ -39,59 +32,59 @@ export const hospitalsAPI = {
     if (query.verified !== undefined) params.append('verified', query.verified.toString());
     if (query.sortBy) params.append('sortBy', query.sortBy);
     if (query.sortOrder) params.append('sortOrder', query.sortOrder);
-     const response = await apiClient.get(`/super-admin/hospitals?${params.toString()}`);
-     return response.data;
-    //
+
+    return apiClient.get<HospitalListResponse>(
+      `/super-admin/hospitals?${params.toString()}`
+    );
   },
 
   // Get pending hospitals
-  getPending: async (): Promise<ApiResponse<Hospital[]>> => {
+  getPending: async (): Promise<Hospital[]> => {
     return apiClient.get('/super-admin/hospitals/pending');
   },
 
   // Get hospital by ID
-  getById: async (id: string): Promise<ApiResponse<Hospital>> => {
-    const response = await apiClient.get(`/super-admin/hospitals/${id}`);
-    return response.data;
+  getById: async (id: string): Promise<Hospital> => {
+    return apiClient.get(`/super-admin/hospitals/${id}`);
   },
 
   // Create hospital
-  create: async (data: CreateHospitalRequest): Promise<ApiResponse<Hospital>> => {
+  create: async (data: CreateHospitalRequest): Promise<Hospital> => {
     return apiClient.post('/super-admin/hospitals', data);
   },
 
   // Update hospital
-  update: async (id: string, data: UpdateHospitalRequest): Promise<ApiResponse<Hospital>> => {
+  update: async (id: string, data: UpdateHospitalRequest): Promise<Hospital> => {
     return apiClient.put(`/super-admin/hospitals/${id}`, data);
   },
 
   // Verify hospital
-  verify: async (id: string): Promise<ApiResponse<Hospital>> => {
+  verify: async (id: string): Promise<Hospital> => {
     return apiClient.post(`/super-admin/hospitals/${id}/verify`);
   },
 
   // Reject hospital
-  reject: async (id: string, data: RejectHospitalRequest): Promise<ApiResponse<Hospital>> => {
+  reject: async (id: string, data: RejectHospitalRequest): Promise<Hospital> => {
     return apiClient.post(`/super-admin/hospitals/${id}/reject`, data);
   },
 
   // Update hospital status
-  updateStatus: async (id: string, data: UpdateStatusRequest): Promise<ApiResponse<Hospital>> => {
+  updateStatus: async (id: string, data: UpdateStatusRequest): Promise<Hospital> => {
     return apiClient.put(`/super-admin/hospitals/${id}/status`, data);
   },
 
   // Delete hospital
-  delete: async (id: string): Promise<ApiResponse<null>> => {
+  delete: async (id: string): Promise<null> => {
     return apiClient.delete(`/super-admin/hospitals/${id}`);
   },
 
   // Get hospital doctors
-  getDoctors: async (id: string): Promise<ApiResponse<any[]>> => {
+  getDoctors: async (id: string): Promise<any[]> => {
     return apiClient.get(`/super-admin/hospitals/${id}/doctors`);
   },
 
   // Get hospital statistics
-  getStats: async (id: string): Promise<ApiResponse<any>> => {
+  getStats: async (id: string): Promise<any> => {
     return apiClient.get(`/super-admin/hospitals/${id}/stats`);
   },
 };

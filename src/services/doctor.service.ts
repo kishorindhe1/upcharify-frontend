@@ -19,7 +19,7 @@ export const doctorsAPI = {
    */
   list: async (query?: DoctorListQuery) => {
     const response = await apiClient.get<DoctorListResponse>('/super-admin/doctors', { params: query });
-    return response.data;
+    return response;
   },
 
   /**

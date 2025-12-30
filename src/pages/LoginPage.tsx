@@ -21,6 +21,7 @@ const LoginPage: React.FC = () => {
   const loginMutation = useMutation({
     mutationFn: authService.login,
     onSuccess: (data) => {
+      console.log('Login successful:', data);
       setAuth(data.user, data.tokens.accessToken || '');
       message.success('Login successful! Welcome back.');
       navigate('/dashboard');

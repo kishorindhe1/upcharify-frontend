@@ -3,15 +3,18 @@ import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Layout, Menu, Avatar, Dropdown, Button } from 'antd';
 import type { MenuProps } from 'antd';
 import {
-  DashboardOutlined,
-  MedicineBoxOutlined,
-  UserOutlined,
-  LogoutOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
-  SettingOutlined,
-  CalendarOutlined,
-} from '@ant-design/icons';
+  LayoutDashboard,
+  Building2,
+  Users,
+  Stethoscope,
+  Calendar,
+  User,
+  LogOut,
+  Menu as MenuIcon,
+  X,
+  Settings,
+  Heart,
+} from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 
 const { Header, Sider, Content } = Layout;
@@ -30,13 +33,13 @@ const MainLayout: React.FC = () => {
   const userMenuItems: MenuProps['items'] = [
     {
       key: 'profile',
-      icon: <UserOutlined />,
+      icon: <User size={16} />,
       label: 'My Profile',
       onClick: () => navigate('/profile'),
     },
     {
       key: 'settings',
-      icon: <SettingOutlined />,
+      icon: <Settings size={16} />,
       label: 'Settings',
       onClick: () => navigate('/settings'),
     },
@@ -45,7 +48,7 @@ const MainLayout: React.FC = () => {
     },
     {
       key: 'logout',
-      icon: <LogoutOutlined />,
+      icon: <LogOut size={16} />,
       label: 'Logout',
       danger: true,
       onClick: handleLogout,
@@ -55,27 +58,27 @@ const MainLayout: React.FC = () => {
   const menuItems: MenuProps['items'] = [
     {
       key: '/dashboard',
-      icon: <DashboardOutlined />,
+      icon: <LayoutDashboard size={20} />,
       label: <Link to="/dashboard">Dashboard</Link>,
     },
     {
       key: '/hospitals',
-      icon: <MedicineBoxOutlined />,
-      label: <Link to={"/hospitals"}>Hospitals</Link>,
-
-     
-    
+      icon: <Building2 size={20} />,
+      label: <Link to="/hospitals">Hospitals</Link>,
     },
-    {      key: '/users',
-      icon: <UserOutlined />,
+    {
+      key: '/users',
+      icon: <Users size={20} />,
       label: <Link to="/users">Users</Link>,
     },
-    {      key: '/doctors',
-      icon: <UserOutlined />,
+    {
+      key: '/doctors',
+      icon: <Stethoscope size={20} />,
       label: <Link to="/doctors">Doctors</Link>,
     },
-    {      key: '/appointments',
-      icon: <CalendarOutlined />,
+    {
+      key: '/appointments',
+      icon: <Calendar size={20} />,
       label: <Link to="/appointments">Appointments</Link>,
     },
   ];
@@ -100,9 +103,7 @@ const MainLayout: React.FC = () => {
         <div className="h-16 flex items-center justify-center border-b border-slate-700">
           <Link to="/dashboard" className="flex items-center space-x-2">
             <div className="w-10 h-10 medical-gradient rounded-xl flex items-center justify-center">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-              </svg>
+              <Heart className="w-6 h-6 text-white" fill="currentColor" />
             </div>
             {!collapsed && (
               <span className="text-white font-bold text-xl">Upcharify</span>
@@ -125,7 +126,7 @@ const MainLayout: React.FC = () => {
         <Header className="bg-white shadow-md px-6 flex items-center justify-between sticky top-0 z-10">
           <Button
             type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            icon={collapsed ? <MenuIcon size={20} /> : <X size={20} />}
             onClick={() => setCollapsed(!collapsed)}
             className="text-lg"
           />
@@ -137,11 +138,11 @@ const MainLayout: React.FC = () => {
                 <Avatar 
                   size="large" 
                   className="bg-gradient-to-r from-teal-500 to-cyan-600"
-                  icon={<UserOutlined />}
+                  icon={<User size={20} />}
                 />
                 <div className="hidden md:block">
                   <p className="font-semibold text-slate-800">{user?.firstName} {user?.lastName}</p>
-                  {/* <p className="text-xs text-slate-500">{user?.role}</p> */}
+                  <p className="text-xs text-slate-500 capitalize">{user?.role?.replace('_', ' ')}</p>
                 </div>
               </div>
             </Dropdown>

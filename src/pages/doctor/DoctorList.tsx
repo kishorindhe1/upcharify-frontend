@@ -49,8 +49,8 @@ export const DoctorList: React.FC = () => {
   const [filters, setFilters] = useQueryStates({
     page: parseAsInteger.withDefault(1),
     limit: parseAsInteger.withDefault(20),
-    search: parseAsString.withDefault(''),
-    specialization: parseAsString.withDefault(''),
+    // search: parseAsString.withDefault(''),
+    // specialization: parseAsString.withDefault(''),
     verified: parseAsString.withDefault(''),
     status: parseAsString.withDefault(''),
     available: parseAsString.withDefault(''),
@@ -243,7 +243,7 @@ export const DoctorList: React.FC = () => {
       render: (_: any, record: Doctor) => (
         <div className="flex items-center justify-center gap-1">
           <Star size={14} className="text-yellow-500 fill-yellow-500" />
-          <span className="text-sm font-medium">{record.rating?.toFixed(1) || '0.0'}</span>
+          <span className="text-sm font-medium">{record.rating || '0.0'}</span>
           <span className="text-xs text-gray-500">({record.totalReviews || 0})</span>
         </div>
       ),
@@ -301,7 +301,7 @@ export const DoctorList: React.FC = () => {
       ),
     },
   ];
-
+ console.log('Doctors Data:', doctors);
   // Calculate statistics
   const stats = {
     total: pagination?.total || 0,
